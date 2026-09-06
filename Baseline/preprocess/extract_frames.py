@@ -1,0 +1,154 @@
+import os
+import sys
+import cv2
+import numpy as np
+from tqdm import tqdm
+
+# Add parent directory to sys.path to import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import config
+
+VIDEO_EXTENSIONS = ('.mp4', '.avi', '.mov', '.mkv', '.3gp', '.flv', '.webm')
+
+def find_video_files(dataset_dir, classes):
+    """
+    Scans the dataset directory and lists all video files.
+    Matches folder names to classes robustly using normalization:
+    - contains 'disengaged' -> Disengaged (label 2)
+    - contains 'partially', 'partial', or 'enaged' -> Partially Engaged (label 1)
+    - contains 'engaged' (but not dis/part) -> Engaged (label 0)
+    Returns:
+        list of dicts containing video details.
+    """
+    video_list = []
+    if not os.path.exists(dataset_dir):
+        print(f"[Error] Dataset directory not found: {dataset_dir}")
+        return video_list
+
+    # Search for directories corresponding to classes
+    dir_contents = os.listdir(dataset_dir)
+    
+    # We will map found subdirectories to their target class labels
+    matched_folders = {0: [], 1: [], 2: []}
+    
+    for item in dir_contents:
+        item_path = os.path.join(dataset_dir, item)
+        if not os.path.isdir(item_path):
+            continue
+            
+        norm_name = item.lower().replace(" ", "").replace("_", "").replace("-", "")
+        
+        if "disengaged" in norm_name:
+            matched_folders[2].append(item)
+        elif "partially" in norm_name or "partial" in norm_name or "enaged" in norm_name:
+            matched_folders[1].append(item)
+        elif "engaged" in norm_name:
+            matched_folders[0].append(item)
+            
+    # Iterate through matched folders for each label
+    for label_idx in range(3):
+        folders = matched_folders[label_idx]
+        cls = classes[label_idx]
+        if not folders:
+            print(f"[Warning] No directory matched for class '{cls}' in {dataset_dir}")
+            continue
+            
+        for match_folder in folders:
+            print(f"[Info] Mapping folder '{match_folder}' to class '{cls}' (label {label_idx})")
+            class_dir = os.path.join(dataset_dir, match_folder)
+            for root, _, files in os.walk(class_dir):
+                for file in sorted(files):
+                    if file.lower().endswith(VIDEO_EXTENSIONS):
+                        video_list.append({
+                            "video_path": os.path.join(root, file),
+                            "class_name": cls,
+                            "label": label_idx,
+                            "filename": file,
+                            "base_name": os.path.splitext(file)[0]
+                        })
+    
+    return video_list
+
+def extract_and_save_frames(video_info, output_dir, target_size=config.IMAGE_SIZE):
+    """
+    Extracts frames from a video, resizes to target_size, and saves as a .npy file.
+    """
+    video_path = video_info["video_path"]
+    class_name = video_info["class_name"]
+    base_name = video_info["base_name"]
+    
+    # Save file format: {CLASS}__{filename}.npy
+    save_filename = f"{class_name}__{base_name}.npy"
+    save_path = os.path.join(output_dir, save_filename)
+    
+    # Resume check
+    if os.path.exists(save_path):
+        return True, "Already processed (skipped)"
+        
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return False, "Cannot open video file"
+        
+    frames = []
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        # Resize frame
+        resized = cv2.resize(frame, target_size)
+        # Convert BGR to RGB
+        rgb_frame = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        frames.append(rgb_frame)
+    
+    cap.release()
+    
+    if len(frames) == 0:
+        return False, "0 frames extracted"
+        
+    frames_np = np.array(frames, dtype=np.uint8) # Shape: [N, H, W, 3]
+    np.save(save_path, frames_np)
+    return True, f"Success ({len(frames)} frames)"
+
+def main():
+    print("==================================================")
+    print("      STEP 1: MODULAR FRAME EXTRACTION           ")
+    print("==================================================")
+    print(f"Dataset root : {config.DATASET_DIR}")
+    print(f"Classes      : {config.CLASSES}")
+    print(f"Output dir   : {config.PREPROCESSED_FRAMES_DIR}\n")
+
+    os.makedirs(config.PREPROCESSED_FRAMES_DIR, exist_ok=True)
+
+    videos = find_video_files(config.DATASET_DIR, config.CLASSES)
+    if not videos:
+        print("[Error] No videos found in the dataset directory. Check paths in config.py.")
+        sys.exit(1)
+        
+    print(f"Found {len(videos)} videos to process.")
+    
+    success_count = 0
+    skip_count = 0
+    error_count = 0
+    
+    for video in tqdm(videos, desc="Extracting frames"):
+        success, message = extract_and_save_frames(video, config.PREPROCESSED_FRAMES_DIR)
+        if success:
+            if "skipped" in message:
+                skip_count += 1
+            else:
+                success_count += 1
+        else:
+            print(f"\n[Warning] Failed to process '{video['filename']}': {message}")
+            error_count += 1
+            
+    print("\n" + "=" * 50)
+    print("  FRAME EXTRACTION COMPLETE")
+    print("=" * 50)
+    print(f"Newly processed: {success_count}")
+    print(f"Resumed/Skipped: {skip_count}")
+    print(f"Failed         : {error_count}")
+    print(f"Total files in output: {len(os.listdir(config.PREPROCESSED_FRAMES_DIR))}")
+    print("=" * 50)
+
+if __name__ == "__main__":
+    main()
