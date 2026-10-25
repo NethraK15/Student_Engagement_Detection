@@ -51,6 +51,9 @@ processed_features/
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 
+# Environment helpers
+powershell.cmd
+
 # Environments
 .env
 .venv

@@ -1,272 +1,242 @@
-# 🎓 Multi-Modal Student Engagement Detection System
+# 🎓 A Dual-Stream Temporal Transformer Framework for Student Engagement Detection in Classroom Videos
 
+[![CI Pipeline](https://github.com/NethraK15/Student_Engagement_Detection/actions/workflows/ci.yml/badge.svg)](https://github.com/NethraK15/Student_Engagement_Detection/actions)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.7%2B-green.svg)](https://opencv.org/)
-[![Gradio](https://img.shields.io/badge/Gradio-4.0%2B-orange.svg)](https://gradio.app/)
+[![OpenFace](https://img.shields.io/badge/OpenFace-2.0-red.svg)](https://github.com/TadasBaltrusaitis/OpenFace)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 
-An end-to-end deep learning framework for **automated student engagement detection** in online and physical classroom environments. This system fuses fine-grained facial behavioral cues (head pose, eye gaze, facial action units from OpenFace) with deep visual representations (EfficientNet embeddings), processed through temporal architectures and transfer learning to predict engagement levels in real time.
+> **Official Research Codebase for:**  
+> *"A Dual-Stream Temporal Transformer Framework for Student Engagement Detection in Classroom Videos"*  
+> **Authors:** Nethra Kanagaraj, S. Adwaitha, Srividya Manikandan, Aadhithya Bharathi A, and Dr. Manjusha R.*  
+> **Affiliation:** Department of Computer Science and Engineering, Amrita School of Computing, Amrita Vishwa Vidyapeetham, Coimbatore, India.  
+> *\*Corresponding author / Research Supervisor: Dr. Manjusha R., Assistant Professor*
 
 ---
 
-## 📌 Table of Contents
-- [Architecture Overview](#-architecture-overview)
-- [Key Features](#-key-features)
-- [Repository Structure](#-repository-structure)
-- [Methodology & Model Architectures](#-methodology--model-architectures)
-  - [1. Multimodal Feature Extraction](#1-multimodal-feature-extraction)
-  - [2. Baseline & Deep Temporal Models](#2-baseline--deep-temporal-models)
-  - [3. Lightweight Temporal Models](#3-lightweight-temporal-models)
-  - [4. DAiSEE Transfer Learning](#4-daisee-transfer-learning)
-  - [5. Interactive Analytics Dashboard](#5-interactive-analytics-dashboard)
-- [Installation & Setup](#-installation--setup)
-- [Usage & Execution](#-usage--execution)
-  - [Baseline Single-Frame & Temporal Models](#baseline-single-frame--temporal-models)
-  - [Lightweight Temporal Experiment](#lightweight-temporal-experiment)
-  - [DAiSEE Transfer Learning Pipeline](#daisee-transfer-learning-pipeline)
-  - [Interactive Dashboard](#interactive-dashboard)
-- [Evaluation & Results](#-evaluation--results)
-- [Contributors](#-contributors)
+## 📌 Abstract & Overview
+
+Recognising whether students are engaged during a lesson can provide instructors with objective feedback. However, natural classroom video remains challenging due to oblique angles, student occlusions, lighting shifts, and subtle temporal behaviors.
+
+This repository implements a **dual-stream temporal Transformer framework** for binary (**Engaged** vs. **Disengaged**) student engagement detection:
+1. **Appearance Stream**: A frozen **EfficientNet-B0** convolutional backbone supplying a 1,280-dimensional spatial descriptor per frame.
+2. **Facial Behavior Stream**: **OpenFace 2.0** supplying a 709-dimensional structured descriptor of facial action units (17 AUs), 3D eye gaze, head pose (6-DoF), and landmarks.
+3. **Temporal Modeling**: Concatenated into a **1,989-dimensional** fused stream, segmented into **120-frame windows (4s at 30 fps)** with **75% overlap (stride 30 frames)**.
+4. **Pre-LN Transformer**: A compact 3-layer, 4-head pre-layer-normalized Transformer encoder with **663,074 trainable parameters** (4.67M total, only 14% trained).
+5. **Video-Level Inference**: Window posteriors are aggregated using **soft voting** to deliver robust video-level engagement predictions.
 
 ---
 
-## 🔬 Architecture Overview
+## 🔬 System Architecture
 
-```
-[ Classroom / Video Stream ]
-           │
-     ┌─────┴─────────────────────────────────────┐
-     ▼                                           ▼
-[ OpenFace 2.0 Feature Extraction ]      [ EfficientNet-B0 Visual Backbone ]
-  • Head Pose (Yaw, Pitch, Roll)           • Deep spatial representations
-  • Eye Gaze Vectors & Angles              • Pre-trained convolutional features
-  • Facial Action Units (AUs)              • Temporal sequence frames
-     │                                           │
-     └─────────────────────┬─────────────────────┘
-                           ▼
-             [ Feature Fusion & Normalization ]
-             (16-frame Temporal Window Sequences)
-                           │
-             ┌─────────────┼─────────────┐
-             ▼             ▼             ▼
-      [ Attention Pool ] [ TCN Layer ] [ Bi-GRU / Transformer ]
-             │             │             │
-             └─────────────┬─────────────┘
-                           ▼
-          [ Multi-Class Engagement Classification ]
-          • High Engagement
-          • Partial / Nominal Engagement
-          • Disengaged / Distracted
-                           │
-                           ▼
-      [ Interactive Analytics & Web Dashboard ]
-      • Real-time video processing & overlay
-      • Engagement timeline & distribution
-      • Temporal attention heatmaps & metrics
-```
-
----
-
-## 🚀 Key Features
-
-- **Multi-Modal Feature Representation**: Combines geometric & behavioral cues (head pose angles, gaze direction, AU intensities) with CNN spatial feature representations.
-- **Comprehensive Benchmarks**: Includes baseline single-frame CNNs, fused feature classifiers, multimodal LSTM-Transformers, and lightweight temporal heads.
-- **Lightweight Temporal Modeling**: Low-parameter architectures (Attention Pooling, TCN, Single-layer GRU) designed to prevent overfitting on smaller sample sizes while capturing dynamic engagement shifts.
-- **DAiSEE Transfer Learning**: Pre-training on the large-scale **DAiSEE** dataset (thousands of annotated video sequences) followed by domain-adaptation fine-tuning on custom classroom target clips.
-- **Illumination Robustness**: Integrated CLAHE (Contrast Limited Adaptive Histogram Equalization) and face quality filters to handle varying lighting conditions.
-- **Interactive Web Dashboard**: Gradio-powered interactive UI with real-time video analytics, frame-level attention breakdowns, engagement gauges, and downloadable session reports.
-
----
-
-## 📁 Repository Structure
-
-```
-.
-├── DPP_LSTM_Transformer_Train.py      # Baseline LSTM-Transformer training pipeline
-├── DPP_LSTM_Transformer_Test.py       # Baseline inference & test script
-│
-├── Baseline/                          # Baseline single-frame & temporal benchmark
-│   ├── preprocess/
-│   │   ├── extract_frames.py          # Frame extraction from raw video
-│   │   ├── extract_openface.py        # Facial landmark & AU extraction
-│   │   ├── extract_efficientnet.py    # Spatial feature extraction via EfficientNet
-│   │   └── fuse_features.py           # Feature fusion script for baseline
-│   ├── config.py                      # Baseline experiment configuration
-│   ├── data_loader.py                 # Baseline dataset loader
-│   ├── models.py                      # Baseline models
-│   ├── train.py                       # Baseline training loop
-│   ├── evaluate.py                    # Baseline evaluation
-│   ├── test_pipeline_local.py         # Baseline test pipeline
-│   └── Colab_Instructions.md          # Baseline Colab guide
-│
-├── lightweight_temporal/              # Lightweight temporal modeling subproject
-│   ├── preprocess/
-│   │   ├── extract_frames.py          # Frame extraction from raw video
-│   │   ├── extract_openface.py        # Facial landmark & AU extraction
-│   │   ├── extract_efficientnet.py    # Spatial feature extraction via EfficientNet
-│   │   └── fuse_sequence_features.py  # Synchronized temporal sequence fusion
-│   ├── config_lightweight.py          # Hyperparameters & path configurations
-│   ├── data_loader_lightweight.py     # PyTorch Dataset & DataLoader
-│   ├── models_lightweight.py          # Attention Pooling, TCN, & GRU models
-│   ├── train_lightweight.py           # Training routine with early stopping
-│   ├── evaluate_lightweight.py        # Confusion matrix, ROC, & metric reports
-│   ├── test_pipeline_lightweight.py   # Unit & forward pass pipeline tests
-│   ├── Colab_Lightweight_Instructions.md # Step-by-step Google Colab execution guide
-│   └── Lightweight_Temporal_Colab_Experiment.ipynb # Interactive notebook
-│
-├── daisee_transfer/                   # DAiSEE transfer learning & fine-tuning
-│   ├── config_daisee.py               # Pre-training & fine-tuning configuration
-│   ├── data_loader_daisee.py          # DAiSEE batch loader & dataset formatting
-│   ├── models_transfer.py             # Transferable Transformer architecture
-│   ├── pretrain_daisee.py             # Phase 1: Pre-training on DAiSEE benchmark
-│   ├── finetune_target.py             # Phase 2: Domain-adaptation fine-tuning
-│   ├── evaluate_transfer.py           # Transfer model performance evaluation
-│   ├── test_pipeline_transfer.py      # Transfer pipeline verification script
-│   ├── Colab_DAiSEE_Transfer_Instructions.md # Transfer learning execution guide
-│   └── DAiSEE_Transfer_Colab_Experiment.ipynb # Transfer experiment notebook
-│
-├── dashboard/                         # Real-time interactive web dashboard
-│   ├── dashboard_transformer.py       # Gradio analytics dashboard (v2)
-│   ├── dashboard_transformer_v1.py    # Initial dashboard implementation (v1)
-│   └── Dashboard_Colab_Guide.ipynb    # Notebook for hosting dashboard on Colab
-│
-├── requirements.txt                   # Project Python dependencies
-├── .gitignore                         # Git ignore rules
-└── README.md                          # Comprehensive documentation
+```text
+               [ Classroom Video Stream (30 fps) ]
+                               │
+            ┌──────────────────┴──────────────────┐
+            ▼                                     ▼
+ [ Stream 1: Appearance ]              [ Stream 2: Facial Behavior ]
+   • EfficientNet-B0 (Frozen)            • OpenFace 2.0 Feature Engine
+   • 224x224 RGB Frame Input             • 17 Facial Action Units (AUs)
+   • Global Average Pooling              • 3D Eye Gaze Vectors & Angles
+   • Dimension: 1,280                    • 6-DoF Head Pose (Yaw, Pitch, Roll)
+            │                            • Dimension: 709
+            └──────────────────┬──────────────────┘
+                               ▼
+               [ Early Feature Concatenation ]
+                  Dimension: 1,989 features/frame
+                               │
+                               ▼
+             [ Sliding Window Segmentation (W=120, S=30) ]
+                  75% Temporal Overlap (4s windows)
+                               │
+                               ▼
+             [ Linear Projection & Positional Encoding ]
+                  1,989 → d_model = 128 (Pre-LN)
+                               │
+                               ▼
+             [ 3-Layer Pre-LN Transformer Encoder ]
+                  4 Attention Heads, FFN Dim = 256
+                  (663,074 Trainable Parameters)
+                               │
+                               ▼
+               [ Masked Temporal Mean Pooling ]
+                               │
+                               ▼
+              [ Tapering MLP Classification Head ]
+                  Linear(128→64) → GELU → Linear(64→32) → GELU → Linear(32→2)
+                               │
+                               ▼
+               [ Video-Level Soft Voting Posterior ]
+                  p_video = (1 / K) * sum(p_k)
+                               │
+                               ▼
+                { Engaged (0)  |  Disengaged (1) }
 ```
 
 ---
 
-## 🧠 Methodology & Model Architectures
+## 📁 Repository Structure & Team Task Allocations
 
-### 1. Multimodal Feature Extraction
-- **OpenFace Behavioral Descriptors**:
-  - Head Pose Translation & Rotation ($R_x, R_y, R_z$)
-  - 2D/3D Eye Gaze Vectors
-  - 18 Facial Action Units (Presence and Intensity)
-- **Deep Spatial Embeddings**:
-  - Pre-trained EfficientNet-B0 backbone extracting dense visual feature representations per frame.
-- **Temporal Alignment**:
-  - Features are aligned into sequences of length $T=16$ frames with stride-based sampling.
-
-### 2. Lightweight Temporal Models
-To optimize computational efficiency and avoid overfitting on compact datasets:
-- **Attention Pooling** (`--model attention_pool`): Uses a single learned query to dynamically weigh salient frames (e.g. distraction moments) with only ~30k parameters.
-- **Temporal Convolutional Network (TCN)** (`--model tcn`): 1D dilated convolutions with BatchNorm and ReLU for local temporal receptive fields (~30k params).
-- **Single-Layer GRU** (`--model gru`): Recurrent unit capturing chronological dependencies with low parameter overhead (~35k params).
-
-### 3. DAiSEE Transfer Learning
-- **Stage 1 (Pre-training)**: Train a 2-layer Multi-Head Self-Attention Transformer Encoder (`d_model=128`, `nhead=4`) on the DAiSEE dataset.
-- **Stage 2 (Domain Adaptation)**: Freeze low-level representations, swap the classification head to target categories, and fine-tune on target classroom recordings.
-
----
-
-## 💻 Installation & Setup
-
-### Local Installation
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/NethraK15/Student_Engagement_Detection.git
-   cd Student_Engagement_Detection
-   ```
-
-2. **Create and activate a virtual environment**:
-   ```bash
-   python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
-   # On Linux/macOS:
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
----
-
-## ⚙️ Usage & Execution
-
-### Baseline Models
-```bash
-# Train baseline model
-python Baseline/train.py
-
-# Evaluate baseline
-python Baseline/evaluate.py
+```text
+Student_Engagement_Detection/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                          # Continuous Integration syntax & smoke test pipeline
+│
+├── configs/
+│   └── config.py                           # Central configuration (W=120, S=30, 1989-dim, hyperparameters)
+│
+├── src/                                    # Proposed Framework Core Modules (Lead)
+│   ├── extractors/
+│   │   ├── appearance_stream.py            # Frozen EfficientNet-B0 1,280-dim feature extractor
+│   │   └── openface_stream.py              # OpenFace 2.0 709-dim AU, gaze, and pose parser
+│   ├── dataset/
+│   │   ├── window_generator.py             # 120-frame windowing with 75% overlap
+│   │   ├── standardizer.py                 # Feature standardization on train split
+│   │   └── data_loader.py                  # PyTorch Dataset for sequence batches
+│   ├── models/
+│   │   ├── transformer_encoder.py          # Proposed 3-layer Pre-LN Transformer (663k params)
+│   │   └── classification_head.py          # Tapering MLP (128→64→32→2)
+│   └── inference/
+│       ├── soft_voting.py                  # Video-level window posterior averaging
+│       └── wilson_interval.py              # Statistical 95% Wilson confidence intervals
+│
+├── ablations/                              # 4-Stage Controlled Ablation Study Suite
+│   ├── stage1_geometric_extractors/        # Stage 1: Dlib vs MediaPipe vs OpenFace 2.0
+│   │   ├── dlib_extractor.py               # Dlib EAR / MAR 6-dim baseline
+│   │   ├── mediapipe_extractor.py          # MediaPipe FaceMesh 55-dim geometry
+│   │   └── run_stage1_ablation.py          # Stage 1 comparison runner
+│   │
+│   ├── stage2_visual_backbones/            # Stage 2: ResNet-18 vs EfficientNet-B0
+│   │   ├── resnet18_backbone.py            # ResNet-18 (512-dim, 11.18M params)
+│   │   ├── efficientnet_backbone.py        # EfficientNet-B0 (1280-dim, 4.01M params)
+│   │   └── run_stage2_ablation.py          # Stage 2 comparison runner
+│   │
+│   ├── stage3_stream_fusion/               # Stage 3: Unimodal vs Dual-Stream Fused
+│   │   ├── evaluate_unimodal.py            # EfficientNet alone (75%) vs OpenFace alone (70%)
+│   │   └── evaluate_fused_static.py        # Fused 1,989-dim static pooling (85%)
+│   │
+│   └── stage4_temporal_models/             # Stage 4: Static vs BiLSTM vs LSTM vs Transformer
+│       ├── static_pooling_model.py         # Static mean pooling (265,378 params)
+│       ├── lstm_baseline.py                # 2-layer forward LSTM (529,826 params)
+│       ├── bilstm_baseline.py              # 2-layer BiLSTM (464,034 params)
+│       └── run_stage4_ablation.py          # Sequence models benchmarking
+│
+├── preliminary_3class_study/               # Review 1 exploratory study (3-class baseline & DAiSEE transfer)
+│   ├── Baseline/                           # Early spatial baseline models
+│   ├── daisee_transfer/                    # DAiSEE benchmark transfer learning
+│   ├── lightweight_temporal/               # Preliminary TCN, GRU & Attention Pooling
+│   └── README.md                           # Documentation on Review 1 exploratory findings
+│
+├── data/
+│   ├── splits/                             # Stratified 70/15/15 dataset splits
+│   │   ├── train_videos.csv                # 93 videos (45 engaged, 48 disengaged) -> 727 windows
+│   │   ├── val_videos.csv                  # 20 videos (10 engaged, 10 disengaged) -> 142 windows
+│   │   └── test_videos.csv                 # 20 videos (10 engaged, 10 disengaged) -> 150 windows
+│   ├── sample/                             # Sample demo frames for pipeline verification
+│   └── README.md                           # Dataset acquisition, format, and Drive download link
+│
+├── docs/
+│   ├── installation_guide.md               # Step-by-step installation (Windows, Linux, CUDA)
+│   └── ablation_results.md                 # Full discussion and Wilson score tables
+│
+├── scripts/
+│   ├── download_dataset.py                 # Automated dataset fetcher
+│   └── train.py                            # Pipeline training runner
+│
+├── requirements.txt
+├── LICENSE
+└── README.md
 ```
 
-### Lightweight Temporal Experiment
+---
 
-1. **Fuse sequence features**:
-   ```bash
-   python lightweight_temporal/preprocess/fuse_sequence_features.py
-   ```
+## 📊 Experimental Results & Ablation Analysis
 
-2. **Run pipeline test**:
-   ```bash
-   python lightweight_temporal/test_pipeline_lightweight.py
-   ```
+Evaluated on **133 naturalistic classroom video recordings** with a stratified **70/15/15** split (93 train, 20 val, 20 test).
 
-3. **Train a model variant**:
-   ```bash
-   # Train Attention Pooling Model
-   python lightweight_temporal/train_lightweight.py --model attention_pool --epochs 50 --lr 0.001
+### Stage 1: Geometric Feature Extractor Ablation
+| Extractor | Feature Dim | Trainable Params | Validation Acc | Test Acc [95% Wilson CI] | Precision | Recall | F1-Score |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Dlib (EAR / MAR)** | 6 | 1,154 | 55.56% | 52.63% [31.7, 72.7] | 27.70% | 52.63% | 36.30% |
+| **MediaPipe FaceMesh** | 55 | 7,426 | 66.67% | 68.42% [46.0, 84.6] | 68.92% | 68.42% | 67.88% |
+| **OpenFace 2.0 (Proposed)** | **709** | **16,770** | **85.00%** | **70.00% [48.1, 85.5]** | **73.81%** | **70.00%** | **68.75%** |
 
-   # Train TCN Model
-   python lightweight_temporal/train_lightweight.py --model tcn --epochs 50 --lr 0.001
+*Takeaway:* OpenFace 2.0 provides semantic facial action units (AUs), 3D gaze, and head pose that survive head rotations where geometry-only heuristics fail.
 
-   # Train GRU Model
-   python lightweight_temporal/train_lightweight.py --model gru --epochs 50 --lr 0.001
-   ```
+### Stage 2: Visual CNN Backbone Ablation
+| Backbone | Feature Dim | Backbone Params | Validation Acc | Test Acc [95% Wilson CI] | Parameter Efficiency |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **ResNet-18** | 512 | $\approx 11.18\,\text{M}$ | 85.00% | 75.00% [53.1, 88.8] | Baseline |
+| **EfficientNet-B0 (Proposed)** | **1,280** | **$\approx 4.01\,\text{M}$** | **75.00%** | **75.00% [53.1, 88.8]** | **−64.1% reduction** |
 
-4. **Evaluate performance**:
-   ```bash
-   python lightweight_temporal/evaluate_lightweight.py --model attention_pool
-   ```
+*Takeaway:* EfficientNet-B0 matches ResNet-18 test accuracy with a 64.1% reduction in backbone parameters while providing a richer 1,280-dim representation.
 
-### DAiSEE Transfer Learning Pipeline
+### Stage 3: Complementarity of Visual & Behavioral Streams
+| Configuration | Modalities | Feature Dim | Test Acc [95% Wilson CI] | Precision | Recall | F1-Score |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **Stream 1 Only** | EfficientNet-B0 | 1,280 | 75.00% [53.1, 88.8] | 75.00% | 75.00% | 75.00% |
+| **Stream 2 Only** | OpenFace 2.0 | 709 | 70.00% [48.1, 85.5] | 73.81% | 70.00% | 68.75% |
+| **Dual-Stream Fused** | **EfficientNet-B0 + OpenFace** | **1,989** | **85.00% [64.0, 94.8]** | **85.00%** | **85.00%** | **85.00%** |
 
-1. **Pre-train on DAiSEE**:
-   ```bash
-   python daisee_transfer/pretrain_daisee.py --model transformer --epochs 30 --lr 0.0005
-   ```
+*Takeaway:* Fusing appearance and facial behavior yields a +10.0% and +15.0% accuracy improvement over either stream alone.
 
-2. **Fine-tune on Target Dataset**:
-   ```bash
-   python daisee_transfer/finetune_target.py --model transformer --epochs 40 --lr 0.0001
-   ```
+### Stage 4: Temporal Sequence Modeling on Fused Stream
+| Architecture | Sequence Engine | Trainable Params | Val Acc (142 windows) | Test Acc [95% Wilson CI] | Precision | Recall | F1-Score |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Static Dual-Stream** | Mean Pooling | 265,378 | 86.62% | 85.00% [64.0, 94.8] | 85.00% | 85.00% | 85.00% |
+| **Dual-Stream + BiLSTM** | 2-layer BiLSTM | 464,034 | 70.42% | 80.00% [58.4, 91.9] | 80.00% | 80.00% | 80.00% |
+| **Dual-Stream + LSTM** | 2-layer LSTM | 529,826 | 76.06% | 90.00% [69.9, 97.2] | 90.00% | 90.00% | 90.00% |
+| **Dual-Stream + Transformer** | **3-layer Pre-LN MHSA** | **663,074** | **83.80%** | **85.00% [64.0, 94.8]** | **85.71%** | **85.00%** | **85.35%** |
 
-3. **Evaluate Transfer Model**:
-   ```bash
-   python daisee_transfer/evaluate_transfer.py --model transformer
-   ```
+*Takeaway:* The Transformer achieves higher validation stability (83.80%) than the LSTM (76.06%) and BiLSTM (70.42%), and enables temporal attention weight inspectability.
 
-### Interactive Dashboard
+---
 
-Launch the Gradio dashboard for real-time video analysis and engagement tracking:
+## 💻 Quick Start & Installation
 
 ```bash
-python dashboard/dashboard_transformer.py
+# 1. Clone the repository
+git clone https://github.com/NethraK15/Student_Engagement_Detection.git
+cd Student_Engagement_Detection
+
+# 2. Set up virtual environment
+python -m venv venv
+venv\Scripts\activate       # Windows
+# source venv/bin/activate  # Linux / macOS
+
+# 3. Install dependencies
+pip install -r requirements.txt
 ```
 
 ---
 
-## 📊 Evaluation & Results
+## 👥 Authors & Contributions
 
-The system evaluates student engagement across three primary states:
-- **Engaged**: Focused eye gaze, active posture, relevant facial action unit activations.
-- **Partially Engaged**: Nominal focus with minor gaze wandering or low-intensity engagement cues.
-- **Disengaged**: Significant head turn, closed eyes/drowsiness, persistent off-screen gaze.
-
-Performance is assessed using **Accuracy**, **Precision**, **Recall**, **Macro F1-Score**, and **ROC-AUC Curves**.
+* **Nethra Kanagaraj**: Dual-stream pipeline design, OpenFace stream integration, Transformer architecture, soft-voting inference, and repository coordination.
+* **S. Adwaitha**: Stage 1 ablation (Dlib EAR/MAR vs. MediaPipe FaceMesh geometry vs. OpenFace).
+* **Srividya Manikandan**: Stage 2 ablation (EfficientNet-B0 vs. ResNet-18 spatial backbone profiling).
+* **Aadhithya Bharathi A**: Stage 4 ablation (Temporal sequence modeling: Static, LSTM, BiLSTM baselines).
+* **Dr. Manjusha R.**: Research supervisor, methodology review, and experimental design guidance.
 
 ---
 
-## 👥 Contributors
+## 📜 Citation
 
-- **Team Srividya**
-- Final Year Project (FYP) — Student Engagement Detection System
+If you find this research work or codebase useful in your academic research, please cite our paper:
+
+```bibtex
+@article{kanagaraj2024dualstream,
+  title={A Dual-Stream Temporal Transformer Framework for Student Engagement Detection in Classroom Videos},
+  author={Kanagaraj, Nethra and Adwaitha, S. and Manikandan, Srividya and Bharathi A, Aadhithya and Manjusha, R.},
+  institution={Department of Computer Science and Engineering, Amrita School of Computing, Amrita Vishwa Vidyapeetham, Coimbatore, India},
+  year={2024}
+}
+```
+
+---
+
+## 📄 License
+
+This repository is distributed under the [MIT License](LICENSE). See `LICENSE` for details.

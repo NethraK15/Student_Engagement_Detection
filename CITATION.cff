@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this research code or framework, please cite it as below."
+authors:
+  - family-names: "Kanagaraj"
+    given-names: "Nethra"
+  - family-names: "Adwaitha"
+    given-names: "S."
+  - family-names: "Manikandan"
+    given-names: "Srividya"
+  - family-names: "Bharathi A"
+    given-names: "Aadhithya"
+  - family-names: "Manjusha"
+    given-names: "R."
+    name-particle: "Dr."
+title: "A Dual-Stream Temporal Transformer Framework for Student Engagement Detection in Classroom Videos"
+version: 1.0.0
+date-released: 2024-10-24
+institution:
+  name: "Department of Computer Science and Engineering, Amrita School of Computing, Amrita Vishwa Vidyapeetham, Coimbatore, India"
