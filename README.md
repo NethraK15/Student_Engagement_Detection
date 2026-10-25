@@ -1,6 +1,5 @@
 # 🎓 A Dual-Stream Temporal Transformer Framework for Student Engagement Detection in Classroom Videos
 
-
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.7%2B-green.svg)](https://opencv.org/)
@@ -80,74 +79,108 @@ This repository implements a **dual-stream temporal Transformer framework** for 
 
 ```text
 Student_Engagement_Detection/
-
-
-
-│
 ├── configs/
-│   └── config.py                           # Central configuration (W=120, S=30, 1989-dim, hyperparameters)
+│   └── config.py                           # Central configuration (W=120, S=30, 1989-dim, AdamW)
 │
 ├── src/                                    # Proposed Framework Core Modules (Lead)
-│   ├── extractors/
-│   │   ├── appearance_stream.py            # Frozen EfficientNet-B0 1,280-dim feature extractor
-│   │   └── openface_stream.py              # OpenFace 2.0 709-dim AU, gaze, and pose parser
-│   ├── dataset/
-│   │   ├── window_generator.py             # 120-frame windowing with 75% overlap
-│   │   ├── standardizer.py                 # Feature standardization on train split
-│   │   └── data_loader.py                  # PyTorch Dataset for sequence batches
+│   ├── preprocess/
+│   │   └── fuse_sequence_features_binary.py # Concatenates OpenFace (709) + EfficientNet (1280) -> 1989-D .pt
 │   ├── models/
-│   │   ├── transformer_encoder.py          # Proposed 3-layer Pre-LN Transformer (663k params)
-│   │   └── classification_head.py          # Tapering MLP (128→64→32→2)
+│   │   └── transformer_encoder.py          # Proposed 3-layer Pre-LN Transformer (663,074 params)
 │   └── inference/
 │       ├── soft_voting.py                  # Video-level window posterior averaging
 │       └── wilson_interval.py              # Statistical 95% Wilson confidence intervals
 │
 ├── ablations/                              # 4-Stage Controlled Ablation Study Suite
-│   ├── stage1_geometric_extractors/        # Stage 1: Dlib vs MediaPipe vs OpenFace 2.0
-│   │   ├── dlib_extractor.py               # Dlib EAR / MAR 6-dim baseline
-│   │   ├── mediapipe_extractor.py          # MediaPipe FaceMesh 55-dim geometry
-│   │   └── run_stage1_ablation.py          # Stage 1 comparison runner
+│   ├── stage1_geometric_extractors/        # Stage 1: Dlib vs MediaPipe vs OpenFace 2.0 (Adwaitha)
+│   │   ├── config_ablation.py              # Stage 1 hyperparameter config
+│   │   ├── dataset_openface.py             # OpenFace feature slice data loader
+│   │   ├── model_openface.py               # Geometric MLP classifier head
+│   │   ├── train_ablation.py               # Training loop
+│   │   ├── evaluate_ablation.py            # Validation & test metrics evaluator
+│   │   ├── extract_classical_dlib_features.py # 6-dim EAR & MAR extractor
+│   │   ├── extract_mediapipe_features.py   # 55-dim 3D landmark mesh extractor
+│   │   ├── OpenFace_Binary_Ablation_Colab.ipynb
+│   │   ├── Geometric_Alternatives_Ablation_Colab.ipynb
+│   │   └── README_Colab_Guide.md
 │   │
-│   ├── stage2_visual_backbones/            # Stage 2: ResNet-18 vs EfficientNet-B0
-│   │   ├── resnet18_backbone.py            # ResNet-18 (512-dim, 11.18M params)
-│   │   ├── efficientnet_backbone.py        # EfficientNet-B0 (1280-dim, 4.01M params)
-│   │   └── run_stage2_ablation.py          # Stage 2 comparison runner
+│   ├── stage2_visual_backbones/            # Stage 2: ResNet-18 vs EfficientNet-B0 (Srividya)
+│   │   ├── ablation_efficientnet_binary.py # EfficientNet-B0 visual stream extraction & classification
+│   │   ├── ablation_resnet18_binary.py     # ResNet-18 spatial feature extraction & benchmark
+│   │   ├── Ablation_EfficientNet_Binary.ipynb
+│   │   ├── Ablation_ResNet18_Binary.ipynb
+│   │   └── README_Colab_Guide.md
 │   │
-│   ├── stage3_stream_fusion/               # Stage 3: Unimodal vs Dual-Stream Fused
-│   │   ├── evaluate_unimodal.py            # EfficientNet alone (75%) vs OpenFace alone (70%)
-│   │   └── evaluate_fused_static.py        # Fused 1,989-dim static pooling (85%)
+│   ├── stage3_stream_fusion/               # Stage 3: Unimodal vs Dual-Stream Fused (Joint Collaboration)
+│   │   ├── config_binary_fusion.py         # Fusion experiment configuration
+│   │   ├── data_loader_binary_fusion.py    # Unimodal & concatenated data loader
+│   │   ├── models_binary_fusion.py         # Static order-invariant pooling baseline
+│   │   ├── train_binary_fusion.py          # Stage 3 training routine
+│   │   ├── evaluate_binary_fusion.py       # Single-stream vs Fused comparative evaluation
+│   │   ├── Ablation_Binary_Fusion_Colab.ipynb
+│   │   └── Colab_Ablation_Guide.md
 │   │
-│   └── stage4_temporal_models/             # Stage 4: Static vs BiLSTM vs LSTM vs Transformer
-│       ├── static_pooling_model.py         # Static mean pooling (265,378 params)
-│       ├── lstm_baseline.py                # 2-layer forward LSTM (529,826 params)
-│       ├── bilstm_baseline.py              # 2-layer BiLSTM (464,034 params)
-│       └── run_stage4_ablation.py          # Sequence models benchmarking
+│   └── stage4_temporal_models/             # Stage 4: Static vs BiLSTM vs LSTM vs Transformer (Aadhithya)
+│       ├── colab_binary_lstm/              # 2-layer forward LSTM sequence model
+│       │   ├── config_binary_lstm.py
+│       │   ├── data_loader_binary_lstm.py
+│       │   ├── models_binary_lstm.py
+│       │   ├── train_binary_lstm.py
+│       │   ├── evaluate_binary_lstm.py
+│       │   ├── Ablation_Binary_LSTM_Colab.ipynb
+│       │   └── Colab_LSTM_Guide.md
+│       ├── colab_binary_bilstm/            # 2-layer bidirectional LSTM sequence model
+│       │   ├── config_binary_bilstm.py
+│       │   ├── data_loader_binary_bilstm.py
+│       │   ├── models_binary_bilstm.py
+│       │   ├── train_binary_bilstm.py
+│       │   ├── evaluate_binary_bilstm.py
+│       │   ├── Ablation_Binary_BiLSTM_Colab.ipynb
+│       │   └── Colab_BiLSTM_Guide.md
+│       └── colab_binary_transformer/       # Windowed temporal Transformer model
+│           ├── config_binary_transformer.py
+│           ├── data_loader_binary_transformer.py
+│           ├── models_binary_transformer.py
+│           ├── train_binary_transformer.py
+│           ├── evaluate_binary_transformer.py
+│           ├── test_classroom_binary_transformer.py
+│           ├── Binary_Transformer_Colab.ipynb
+│           └── Colab_Binary_Transformer_Guide.md
 │
-├── preliminary_3class_study/               # Review 1 exploratory study (3-class baseline & DAiSEE transfer)
-│   ├── Baseline/                           # Early spatial baseline models
+├── preliminary_3class_study/               # Preserved Review 1 Exploratory 3-Class Experiments
+│   ├── Baseline/                           # Early single-frame models
+│   ├── Baseline_transformer/               # Initial transformer trials
+│   ├── baseline_LSTM/                      # Initial LSTM experiments
+│   ├── Illumination_LSTM/                  # Illumination robustness tests
+│   ├── Illumination_LSTM_Crop/             # Cropped face illumination trials
+│   ├── Illumination_Transformer/           # Illumination transformer trials
 │   ├── daisee_transfer/                    # DAiSEE benchmark transfer learning
 │   ├── lightweight_temporal/               # Preliminary TCN, GRU & Attention Pooling
+│   ├── lstm_gru/                           # Hybrid LSTM-GRU comparative trials
 │   └── README.md                           # Documentation on Review 1 exploratory findings
 │
-├── data/
-│   ├── splits/                             # Stratified 70/15/15 dataset splits
-│   │   ├── train_videos.csv                # 93 videos (45 engaged, 48 disengaged) -> 727 windows
-│   │   ├── val_videos.csv                  # 20 videos (10 engaged, 10 disengaged) -> 142 windows
-│   │   └── test_videos.csv                 # 20 videos (10 engaged, 10 disengaged) -> 150 windows
-│   ├── sample/                             # Sample demo frames for pipeline verification
-│   └── README.md                           # Dataset acquisition, format, and Drive download link
+├── data/                                   # Dataset Documentation & Demonstration Samples
+│   ├── sample/
+│   │   └── Multi_student_video_sample/
+│   │       └── multi_student_video.mp4     # Multi-student classroom video demonstration
+│   ├── splits/
+│   │   └── README.md                       # 70/15/15 stratified video-level split documentation
+│   └── README.md                           # Cloud feature download instructions & format
 │
-├── docs/
-│   ├── installation_guide.md               # Step-by-step installation (Windows, Linux, CUDA)
-│   └── ablation_results.md                 # Full discussion and Wilson score tables
+├── dashboard/                              # Real-time Interactive Web Dashboard
+├── docs/                                   # Comprehensive Project Documentation
+│   ├── installation_guide.md               # Step-by-step setup (Windows, Linux, CUDA)
+│   └── ablation_results.md                 # Full ablation benchmark tables & Wilson CI analysis
 │
-├── scripts/
-│   ├── download_dataset.py                 # Automated dataset fetcher
-│   └── train.py                            # Pipeline training runner
+├── scripts/                                # Helper Utilities
+│   └── download_dataset.py                 # Automated dataset fetcher
 │
-├── requirements.txt
-├── LICENSE
-└── README.md
+├── .gitignore
+├── CITATION.cff                            # Research paper citation metadata
+├── CONTRIBUTING.md                         # Open-source contribution guidelines
+├── LICENSE                                 # MIT Open Source License
+├── README.md                               # Research paper showcase documentation
+└── requirements.txt                        # Python dependencies
 ```
 
 ---
