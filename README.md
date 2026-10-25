@@ -1,6 +1,6 @@
 # 🎓 A Dual-Stream Temporal Transformer Framework for Student Engagement Detection in Classroom Videos
 
-[![CI Pipeline](https://github.com/NethraK15/Student_Engagement_Detection/actions/workflows/ci.yml/badge.svg)](https://github.com/NethraK15/Student_Engagement_Detection/actions)
+
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.7%2B-green.svg)](https://opencv.org/)
@@ -80,9 +80,9 @@ This repository implements a **dual-stream temporal Transformer framework** for 
 
 ```text
 Student_Engagement_Detection/
-├── .github/
-│   └── workflows/
-│       └── ci.yml                          # Continuous Integration syntax & smoke test pipeline
+
+
+
 │
 ├── configs/
 │   └── config.py                           # Central configuration (W=120, S=30, 1989-dim, hyperparameters)
