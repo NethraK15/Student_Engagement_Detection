@@ -38,8 +38,10 @@ checkpoints/
 # Datasets and extracted frames
 dataset/
 datasets/
-data/
-raw_data/
+data/sequence_fused_features_binary/
+data/raw/
+raw_data/sequence_fused_features_binary/
+data/raw/
 extracted_frames/
 processed_features/
 *.zip
